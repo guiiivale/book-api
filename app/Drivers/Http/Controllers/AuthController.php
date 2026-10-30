@@ -3,20 +3,23 @@
 namespace App\Drivers\Http\Controllers;
 
 use App\Application\Auth\DTOs\LoginDTO;
+use App\Application\Http\Contracts\ClientIpResolver;
 use App\Application\Auth\UseCases\LoginUser;
 use App\Application\Auth\UseCases\LogoutUser;
 use App\Domain\Auth\Exceptions\InvalidCredentialsException;
+use App\Domain\Auth\Exceptions\TooManyAuthenticationAttemptsException;
 use App\Drivers\Http\Requests\Auth\LoginRequest;
 use App\Drivers\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 
 class AuthController extends BaseController
 {
-    public function login(LoginRequest $request, LoginUser $loginUser)
+    public function login(LoginRequest $request, LoginUser $loginUser, ClientIpResolver $clientIp)
     {
         $dto = LoginDTO::fromArray(
             $request->validated(),
-            $request->userAgent() ?? 'book-registry-api'
+            $request->userAgent() ?? 'book-registry-api',
+            $clientIp->resolve($request),
         );
 
         try {
@@ -27,6 +30,10 @@ class AuthController extends BaseController
                 'access_token' => $result['token'],
                 'user' => new UserResource($result['user']),
             ], 'Login successful.');
+        } catch (TooManyAuthenticationAttemptsException $e) {
+            return $this->response
+                ->fail($e->getMessage(), 429)
+                ->header('Retry-After', (string) $e->retryAfterSeconds);
         } catch (InvalidCredentialsException $e) {
             return $this->response->fail($e->getMessage(), 401);
         }

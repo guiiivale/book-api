@@ -130,6 +130,44 @@ Standard envelope:
 
 Validation failures return `422` with an `errors` object.
 
+## Rate limiting (login & public auth)
+
+Two layers protect public auth endpoints:
+
+1. **Failed login lockout** — After 5 failed attempts for the same email + IP (`LOGIN_MAX_ATTEMPTS`, `LOGIN_DECAY_SECONDS`), the API returns **429** with `Retry-After`. A successful login clears the counter.
+2. **Route throttle** — `POST /api/auth/login` is limited to **20 requests/minute per IP** (`PUBLIC_AUTH_REQUESTS_PER_MINUTE`) via middleware.
+
+The same `AuthenticationThrottle` contract supports a future **register** flow (`auth_limits.register.*`) without changing the architecture.
+
+## Client apps (web, mobile) & CORS
+
+Rate limiting uses the **caller's IP** (`$request->ip()`), not a configured “frontend server IP”. Each phone or browser sends its own address. Behind a reverse proxy, set `TRUSTED_PROXIES` so Laravel reads `X-Forwarded-For` correctly.
+
+**Browser / SPA (multiple sites):** list every origin in `.env`:
+
+```env
+APP_CLIENT_ORIGINS=https://app.example.com,https://www.example.com,http://localhost:3000
+```
+
+Optional wildcards for subdomains:
+
+```env
+APP_CLIENT_ORIGIN_PATTERNS=#^https://.*\.example\.com$#
+```
+
+These values drive `config/cors.php`. Sanctum stateful domains are derived from the same origins unless you override `SANCTUM_STATEFUL_DOMAINS`.
+
+**Native mobile** apps call the API with Bearer tokens; CORS does not apply. No extra IP config is required—use the public `APP_URL` of the API in the app.
+
+**Production example:**
+
+```env
+APP_URL=https://api.example.com
+TRUSTED_PROXIES=*
+APP_CLIENT_ORIGINS=https://web.example.com,https://admin.example.com
+L5_SWAGGER_CONST_HOST=https://api.example.com
+```
+
 ## Tests
 
 ```bash
