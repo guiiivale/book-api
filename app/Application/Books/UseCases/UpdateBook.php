@@ -12,9 +12,8 @@ final class UpdateBook
 
     public function __invoke(int $bookId, int $userId, array $data): Book
     {
-        $this->books->findOrFailForUser($bookId, $userId);
         $dto = UpdateBookDTO::fromArray($data);
 
-        return $this->books->update($bookId, $dto->toArray());
+        return $this->books->updateForUser($bookId, $userId, $dto->toArray());
     }
 }

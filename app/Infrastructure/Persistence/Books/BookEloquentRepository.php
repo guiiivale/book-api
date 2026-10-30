@@ -74,6 +74,27 @@ final class BookEloquentRepository extends BaseEloquentEntityRepository implemen
         return $book;
     }
 
+    public function updateForUser(int $id, int $userId, array $data): Book
+    {
+        $payload = $this->normalizeData($data);
+
+        $updated = BookModel::query()
+            ->where('user_id', $userId)
+            ->where('id', $id)
+            ->update($payload);
+
+        if (!$updated) {
+            throw new BookAccessDeniedException();
+        }
+
+        $model = BookModel::query()
+            ->where('user_id', $userId)
+            ->where('id', $id)
+            ->firstOrFail();
+
+        return BookMapper::toEntity($model);
+    }
+
     public function deleteByIdForUser(int $id, int $userId): Book
     {
         $model = BookModel::query()

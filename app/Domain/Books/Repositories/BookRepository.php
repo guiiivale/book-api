@@ -17,5 +17,7 @@ interface BookRepository extends BaseEntityRepository
 
     public function findOrFailForUser(int $id, int $userId): Book;
 
+    public function updateForUser(int $id, int $userId, array $data): Book;
+
     public function deleteByIdForUser(int $id, int $userId): Book;
 }

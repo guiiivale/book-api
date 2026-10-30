@@ -45,7 +45,7 @@ class BookCrudTest extends TestCase
         ]);
     }
 
-    public function test_user_cannot_access_another_users_book(): void
+    public function test_user_cannot_read_update_or_delete_another_users_book(): void
     {
         [$userA, $tokenA] = $this->actingAsUser();
         $userB = User::factory()->create();
@@ -57,10 +57,32 @@ class BookCrudTest extends TestCase
             'value' => 10,
         ]);
 
+        $payload = [
+            'name' => 'Hijacked Title',
+            'isbn' => '9999999999',
+            'value' => 99.99,
+        ];
+
         $this->withToken($tokenA)
             ->getJson("/api/books/{$book->id}")
             ->assertNotFound()
             ->assertJsonPath('success', false);
+
+        $this->withToken($tokenA)
+            ->putJson("/api/books/{$book->id}", $payload)
+            ->assertNotFound()
+            ->assertJsonPath('message', 'Book not found.');
+
+        $this->withToken($tokenA)
+            ->deleteJson("/api/books/{$book->id}")
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('books', [
+            'id' => $book->id,
+            'user_id' => $userB->id,
+            'name' => 'Private Book',
+            'isbn' => '1234567890',
+        ]);
     }
 
     public function test_isbn_must_be_digits_only(): void
