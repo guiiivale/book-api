@@ -36,7 +36,6 @@ class BookEloquentRepositoryTest extends TestCase
             ]);
             $this->fail('Expected BookAccessDeniedException when updating without ownership scope.');
         } catch (BookAccessDeniedException) {
-            // expected
         }
 
         $this->assertDatabaseHas('books', [
